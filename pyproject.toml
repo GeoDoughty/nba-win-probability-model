@@ -1,0 +1,9 @@
+[project]
+name = "example-project"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "nba-api>=1.7",
+]
