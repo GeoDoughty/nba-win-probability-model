@@ -37,10 +37,10 @@ def get_single_game_pbp(game_id: str) -> pd.DataFrame:
 
 def load_season_pbp_data(games_df: pd.DataFrame, output_path: Path) -> None:
     if not output_path.parent.exists():
-        output_path.parent.mkdir()
+        output_path.mkdir(parents=True)
 
     pbp_list = []
-    for game_id in tqdm(games_df["GAME_ID"], "Loading PBP Data"):
+    for game_id in tqdm(games_df.head(10)["GAME_ID"], "Loading PBP Data"):
         single_game_pbp_df = get_single_game_pbp(game_id)
         pbp_list.append(single_game_pbp_df)
 
@@ -51,3 +51,8 @@ def load_season_pbp_data(games_df: pd.DataFrame, output_path: Path) -> None:
 if __name__ == "__main__":
     games_df = get_games("2022")
     load_season_pbp_data(games_df, output_path=Path("data/raw/pbp/2022_reg_season.parquet"))
+
+    games_path = Path("data/raw/games/2022_reg_season.parquet")
+    if not games_path.parent.exists():
+        games_path.parent.mkdir(parents=True)
+    games_df.to_parquet("data/raw/games/2022_reg_season.parquet")
