@@ -4,6 +4,23 @@ from pathlib import Path
 
 import pandas as pd
 from nba_api.stats.endpoints import LeagueGameLog, PlayByPlay
+from tqdm import tqdm
+
+
+# Retry Wrapper
+def retry(func, retries=3):
+    """Shamelessy stolen from https://github.com/swar/nba_api/blob/master/docs/examples/Home%20Team%20Win-Loss%20Modeling/Home%20Team%20Win-Loss%20Data%20Prep.ipynb"""
+    def retry_wrapper(*args, **kwargs):
+        attempts = 0
+        while attempts < retries:
+            try:
+                return func(*args, **kwargs)
+            except requests.exceptions.RequestException as e:
+                print(e)
+                time.sleep(30)
+                attempts += 1
+
+    return retry_wrapper
 
 
 def get_games(season: str | None = None):
@@ -14,6 +31,7 @@ def get_games(season: str | None = None):
     away_mask = games_df["MATCHUP"].str.contains("@")
     return games_df[~away_mask]
 
+@retry
 def get_single_game_pbp(game_id: str) -> pd.DataFrame:
     return PlayByPlay(game_id).get_data_frames()[0]
 
@@ -22,7 +40,7 @@ def load_season_pbp_data(games_df: pd.DataFrame, output_path: Path) -> None:
         output_path.parent.mkdir()
 
     pbp_list = []
-    for game_id in games_df["GAME_ID"]:
+    for game_id in tqdm(games_df["GAME_ID"], "Loading PBP Data"):
         single_game_pbp_df = get_single_game_pbp(game_id)
         pbp_list.append(single_game_pbp_df)
 
