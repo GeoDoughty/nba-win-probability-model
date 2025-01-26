@@ -21,7 +21,7 @@ gamefinder = leaguegamefinder.LeagueGameFinder(team_id_nullable=pacers_id,
 
 games_dict = gamefinder.get_normalized_dict()
 games = games_dict['LeagueGameFinderResults']
-game = games[-1]
+game = games[-3]
 game_id = game['GAME_ID']
 game_matchup = game['MATCHUP']
 
@@ -34,4 +34,8 @@ from nba_api.stats.endpoints import playbyplay
 df = playbyplay.PlayByPlay(game_id).get_data_frames()[0]
 df.head() #just looking at the head of the data
 
-df.iloc[2]
+# %%
+# Process data
+score_df = df[df['SCORE'].notna()]
+score_df[['AWAY_SCORE', 'HOME_SCORE']] = score_df['SCORE'].str.split(' - ', expand=True).astype(int)
+score_df['HOME_WIN'] = int(int(score_df.iloc[-1]['SCOREMARGIN']) > 0)
