@@ -30,8 +30,8 @@ print(f'Searching through {len(games)} game(s) for the game_id of {game_id} wher
 # %%
 
 # Query for the play by play of that most recent regular season game
-from nba_api.stats.endpoints import playbyplay
-df = playbyplay.PlayByPlay(game_id).get_data_frames()[0]
+from nba_api.stats.endpoints import PlayByPlay
+df = PlayByPlay(game_id).get_data_frames()[0]
 df.head() #just looking at the head of the data
 
 # %%
@@ -39,3 +39,5 @@ df.head() #just looking at the head of the data
 score_df = df[df['SCORE'].notna()]
 score_df[['AWAY_SCORE', 'HOME_SCORE']] = score_df['SCORE'].str.split(' - ', expand=True).astype(int)
 score_df['HOME_WIN'] = int(int(score_df.iloc[-1]['SCOREMARGIN']) > 0)
+
+score_df.to_csv(f'{game_id}_score.csv', index=False)
