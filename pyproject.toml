@@ -11,3 +11,12 @@ dependencies = [
 
 [tool.ruff]
 line-length = 100
+
+[tool.ruff.lint]
+select = ["ALL"]
+unfixable = ["F401", "F841"]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.9.3",
+]
