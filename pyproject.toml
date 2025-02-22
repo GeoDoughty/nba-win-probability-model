@@ -8,3 +8,6 @@ dependencies = [
     "nba-api>=1.7",
     "pandas>=2.2.3",
 ]
+
+[tool.ruff]
+unfixable=['F401']
