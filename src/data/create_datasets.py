@@ -87,7 +87,11 @@ def get_game_time_rolling_team_stats(team_id_list: list, season: str) -> pd.Data
 
 # Add in score differential and winner
 raw_pbp_df["score_diff"] = raw_pbp_df["hs"] - raw_pbp_df["vs"]
-raw_pbp_df
+home_win_series = (
+    raw_pbp_df.sort_values("wallclk").groupby("GAME_ID")["score_diff"].last() > 0
+)
+home_win_series = home_win_series.astype(int).rename("home_win")
+raw_pbp_df = raw_pbp_df.merge(home_win_series, left_on="GAME_ID", right_index=True)
 
 team_list = raw_pbp_df[["tid", "oftid"]].melt()["value"].unique()
 game_stat_df = get_game_time_rolling_team_stats(team_list, season)
