@@ -9,14 +9,39 @@ For info coming into the game:
 - leaguedashteamstats (stats about the last N games for a team)
 - Need a way to find out which game we on and get the season at that point"""
 
+import re
 import pandas as pd
 from nba_api.stats.endpoints.teamgamelog import TeamGameLog
 
+### Data loading params ###
+TRAIN_DATA_PATHS = [
+    # "data/raw/pbp/parquet/datanba_2021.tar.parquet",  # ! Doesn't contain wallclk just clk
+    "data/raw/pbp/parquet/datanba_2022.tar.parquet",
+]
+TEST_DATA_PATHS = [
+    "data/raw/pbp/parquet/datanba_2023.tar.parquet",
+]
+### ------------------- ###
 
-raw_pbp_df = pd.read_parquet(r"data\raw\pbp\parquet\datanba_2022.tar.parquet")
+SEASON_REGEX = r"data/raw/pbp/parquet/datanba_(\d{4})\.tar\.parquet"
 
-# ! This will break in the 90s
-season = f"20{raw_pbp_df['GAME_ID'].iloc[0]}"[:4]
+
+def load_datanba_parquet(path: str) -> tuple[pd.DataFrame, str]:
+    """Load datanab parquet file from datanba."""
+    raw_pbp_df = pd.read_parquet(path)
+    season = re.match(SEASON_REGEX, path).group(1)
+
+    # Add in score differential and winner
+    raw_pbp_df["score_diff"] = raw_pbp_df["hs"] - raw_pbp_df["vs"]
+    home_win_series = (
+        raw_pbp_df.sort_values("wallclk").groupby("GAME_ID")["score_diff"].last() > 0
+    )
+    home_win_series = home_win_series.astype(int).rename("home_win")
+    raw_pbp_df = raw_pbp_df.merge(home_win_series, left_on="GAME_ID", right_index=True)
+
+    # Clean to match the NBA api
+    raw_pbp_df["GAME_ID"] = "00" + raw_pbp_df["GAME_ID"].astype(str)
+    return raw_pbp_df, season
 
 
 def get_team_cum_stats(team_id: str, season: str) -> pd.DataFrame:
@@ -85,20 +110,34 @@ def get_game_time_rolling_team_stats(team_id_list: list, season: str) -> pd.Data
     return home_df.merge(away_df, on=index_cols)
 
 
-# Add in score differential and winner
-raw_pbp_df["score_diff"] = raw_pbp_df["hs"] - raw_pbp_df["vs"]
-home_win_series = (
-    raw_pbp_df.sort_values("wallclk").groupby("GAME_ID")["score_diff"].last() > 0
-)
-home_win_series = home_win_series.astype(int).rename("home_win")
-raw_pbp_df = raw_pbp_df.merge(home_win_series, left_on="GAME_ID", right_index=True)
+def load_and_process_single_season(path: str) -> pd.DataFrame:
+    """Load and process raw data."""
+    raw_pbp_df, season = load_datanba_parquet(path)
+    team_list = raw_pbp_df[["tid", "oftid"]].melt()["value"].unique()
+    game_stat_df = get_game_time_rolling_team_stats(team_list, season)
 
-team_list = raw_pbp_df[["tid", "oftid"]].melt()["value"].unique()
-game_stat_df = get_game_time_rolling_team_stats(team_list, season)
+    full_pbp_df = raw_pbp_df.merge(
+        game_stat_df, left_on=["GAME_ID"], right_on=["Game_ID"]
+    )
+    return full_pbp_df
 
-raw_pbp_df["GAME_ID"] = "00" + raw_pbp_df["GAME_ID"].astype(str)
-full_pbp_df = raw_pbp_df.merge(game_stat_df, left_on=["GAME_ID"], right_on=["Game_ID"])
 
+def create_train_test_datasets() -> None:
+    """Create train and test datasets."""
+    train_df = pd.concat(
+        [load_and_process_single_season(path) for path in TRAIN_DATA_PATHS]
+    )
+    test_df = pd.concat(
+        [load_and_process_single_season(path) for path in TEST_DATA_PATHS]
+    )
+
+    return train_df, test_df
+
+
+if __name__ == "__main__":
+    train_df, test_df = create_train_test_datasets()
+    train_df.to_parquet("data/processed/train_22.parquet")
+    test_df.to_parquet("data/processed/test_23.parquet")
 
 # Comments for next week:
 # - ~~Add in score differential~~
