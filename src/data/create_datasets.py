@@ -46,14 +46,47 @@ def get_team_cum_stats(team_id: str, season: str) -> pd.DataFrame:
     )
 
 
-team_list = raw_pbp_df[["tid", "oftid"]].melt()["value"].unique()
-team_stat_list = []
-for team_id in team_list:
-    if team_id == 0:
-        continue
-    team_stat_list.append(get_team_cum_stats(team_id, season))
+def get_game_time_rolling_team_stats(team_id_list: list, season: str) -> pd.DataFrame:
+    """Get teams rolling stats entering the game, split by home and away."""
+    team_stat_list = []
+    for team_id in team_id_list:
+        if team_id == 0:
+            continue
+        team_stat_list.append(get_team_cum_stats(team_id, season))
 
-team_stat_df = pd.concat(team_stat_list)
+    team_stat_df = pd.concat(team_stat_list)
+
+    # Flatten team stats to be by game, home and away
+    team_stat_df["is_home_team"] = team_stat_df["MATCHUP"].str.contains("vs.")
+    index_cols = ["Game_ID", "GAME_DATE"]
+
+    home_df = (
+        team_stat_df[team_stat_df["is_home_team"]]
+        .rename(
+            columns={
+                v: f"HOME_{v}" if v not in index_cols else v
+                for v in team_stat_df.columns
+            }
+        )
+        .drop(columns=["HOME_is_home_team"])
+    )
+    away_df = (
+        team_stat_df[~team_stat_df["is_home_team"]]
+        .rename(
+            columns={
+                v: f"AWAY_{v}" if v not in index_cols else v
+                for v in team_stat_df.columns
+            }
+        )
+        .drop(columns=["AWAY_is_home_team"])
+    )
+
+    return home_df.merge(away_df, on=index_cols)
+
+
+team_list = raw_pbp_df[["tid", "oftid"]].melt()["value"].unique()
+game_stat_df = get_game_time_rolling_team_stats(team_list, season)
+
 
 # Comments for next week:
 # - Merge team stats with pbp data (may need to set a home and away merge as this isn't provided in the PBP)
