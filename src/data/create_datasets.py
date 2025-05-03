@@ -12,6 +12,7 @@ For info coming into the game:
 import pandas as pd
 from nba_api.stats.endpoints.teamgamelog import TeamGameLog
 
+
 raw_pbp_df = pd.read_parquet(r"data\raw\pbp\parquet\datanba_2022.tar.parquet")
 
 # ! This will break in the 90s
@@ -84,12 +85,19 @@ def get_game_time_rolling_team_stats(team_id_list: list, season: str) -> pd.Data
     return home_df.merge(away_df, on=index_cols)
 
 
+# Add in score differential and winner
+raw_pbp_df["score_diff"] = raw_pbp_df["hs"] - raw_pbp_df["vs"]
+raw_pbp_df
+
 team_list = raw_pbp_df[["tid", "oftid"]].melt()["value"].unique()
 game_stat_df = get_game_time_rolling_team_stats(team_list, season)
 
+raw_pbp_df["GAME_ID"] = "00" + raw_pbp_df["GAME_ID"].astype(str)
+full_pbp_df = raw_pbp_df.merge(game_stat_df, left_on=["GAME_ID"], right_on=["Game_ID"])
+
 
 # Comments for next week:
-# - Merge team stats with pbp data (may need to set a home and away merge as this isn't provided in the PBP)
-# - Add in score differential
+# - ~~Add in score differential~~
+# - ~~Merge team stats with pbp data (may need to set a home and away merge as this isn't provided in the PBP)~~
 # - Split into train and test
 # - Export
