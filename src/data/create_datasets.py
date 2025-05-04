@@ -10,6 +10,7 @@ For info coming into the game:
 - Need a way to find out which game we on and get the season at that point"""
 
 import re
+import numpy as np
 import pandas as pd
 from nba_api.stats.endpoints.teamgamelog import TeamGameLog
 
@@ -26,6 +27,19 @@ TEST_DATA_PATHS = [
 SEASON_REGEX = r"data/raw/pbp/parquet/datanba_(\d{4})\.tar\.parquet"
 
 
+def calculate_game_time(data_df: pd.DataFrame) -> pd.Series:
+    # need to edit this for period 5+
+    quarter_time_series = np.where(
+        data_df["PERIOD"] <= 4, pd.Timedelta(minutes=12), pd.Timedelta(minutes=5)
+    ) - pd.to_timedelta("00:" + data_df["cl"])
+
+    game_time_up_to_quarter = (data_df["PERIOD"] - 1) * pd.Timedelta(
+        minutes=12
+    ) + np.maximum(0, data_df["PERIOD"] - 5) * pd.Timedelta(minutes=5)
+
+    return game_time_up_to_quarter + quarter_time_series
+
+
 def load_datanba_parquet(path: str) -> tuple[pd.DataFrame, str]:
     """Load datanab parquet file from datanba."""
     raw_pbp_df = pd.read_parquet(path)
@@ -38,6 +52,9 @@ def load_datanba_parquet(path: str) -> tuple[pd.DataFrame, str]:
     )
     home_win_series = home_win_series.astype(int).rename("home_win")
     raw_pbp_df = raw_pbp_df.merge(home_win_series, left_on="GAME_ID", right_index=True)
+
+    # Add in-game time
+    raw_pbp_df["gametime_elapsed"] = calculate_game_time(raw_pbp_df)
 
     # Clean to match the NBA api
     raw_pbp_df["GAME_ID"] = "00" + raw_pbp_df["GAME_ID"].astype(str)
