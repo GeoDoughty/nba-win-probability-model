@@ -12,6 +12,7 @@ For info coming into the game:
 import re
 import numpy as np
 import pandas as pd
+import polars as pl
 from nba_api.stats.endpoints.teamgamelog import TeamGameLog
 
 ### Data loading params ###
@@ -139,6 +140,30 @@ def load_and_process_single_season(path: str) -> pd.DataFrame:
     return full_pbp_df
 
 
+def resample_game_data(df: pl.DataFrame) -> pl.DataFrame:
+    """Resample the game data to 5 second intervals."""
+
+    return (
+        df.with_columns(pl.col("gametime_elapsed").add(pl.datetime(1970, 1, 1)))
+        .sort(["GAME_ID", "gametime_elapsed"])
+        .group_by_dynamic(
+            "gametime_elapsed",
+            every="5s",
+            label="right",
+            closed="right",
+            group_by=["GAME_ID"],
+        )
+        .agg(pl.all().last())
+        .upsample(
+            time_column="gametime_elapsed",
+            every="5s",
+            group_by=["GAME_ID"],
+            maintain_order=True,
+        )
+        .fill_null(strategy="forward")
+    )
+
+
 def create_train_test_datasets() -> None:
     """Create train and test datasets."""
     train_df = pd.concat(
@@ -155,6 +180,13 @@ if __name__ == "__main__":
     train_df, test_df = create_train_test_datasets()
     train_df.to_parquet("data/processed/train_22.parquet")
     test_df.to_parquet("data/processed/test_23.parquet")
+
+    resample_game_data(train_df).write_parquet(
+        "data/processed/resampled_train_22.parquet"
+    )
+    resample_game_data(test_df).write_parquet(
+        "data/processed/resampled_test_23.parquet"
+    )
 
 # Comments for next week:
 # - ~~Add in score differential~~
