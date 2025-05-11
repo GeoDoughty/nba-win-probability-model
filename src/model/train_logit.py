@@ -4,6 +4,8 @@ Train a basic logistic regression model on the data."""
 
 import polars as pl
 from sklearn.linear_model import LogisticRegression
+from sklearn import metrics
+import numpy as np
 
 train_df = pl.read_parquet("data/processed/resampled_train_22.parquet")
 # test_df = pd.read_parquet("data/processed/test_23.parquet")
@@ -39,9 +41,9 @@ clean_train_df = (
 X = clean_train_df.drop("home_win")
 y = clean_train_df["home_win"].to_numpy()
 
-# resampled_train_df.sort(["GAME_ID", "gametime_elapsed"])
-
 model = LogisticRegression().fit(X=X, y=y)
-model
+model.classes_
+X_pred = model.predict_proba(X)[:, 1]
+np.unique(X_pred, return_counts=True)
 
 # Check todo.md for more info
