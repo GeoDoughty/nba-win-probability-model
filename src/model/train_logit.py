@@ -62,9 +62,9 @@ model.classes_
 X_pred = model.predict_proba(X)[:, 1]
 np.unique(X_pred, return_counts=True)
 
-clean_train_df = clean_train_df.with_columns(home_win_prob=X_pred)
+export_train_df = train_df.drop_nulls().with_columns(home_win_prob=X_pred)
 avg_accuracy = (
-    (clean_train_df["home_win_prob"] > 0.5) == (clean_train_df["home_win"] == 1)
+    (export_train_df["home_win_prob"] > 0.5) == (export_train_df["home_win"] == 1)
 ).mean()
 
 print(f"Average accuracy on training set: {avg_accuracy:.2%}")
@@ -73,7 +73,7 @@ print(f"Average accuracy on training set: {avg_accuracy:.2%}")
 reduced_test_df = clean_test_df.select(test_cols)
 X_test = reduced_test_df.drop("home_win")
 y = reduced_test_df["home_win"].to_numpy()
-clean_test_df = clean_test_df.with_columns(
+clean_test_df = test_df.drop_nulls().with_columns(
     home_win_prob=model.predict_proba(X_test)[:, 1]
 )
 
@@ -83,4 +83,7 @@ test_avg_accuracy = (
 
 print(f"Average accuracy on test set: {test_avg_accuracy:.2%}")
 print("you did it chief")
+
+export_train_df.write_parquet("data/processed/logit/basic_train_22.parquet")
+clean_test_df.write_parquet("data/processed/logit/basic_test_23.parquet")
 # Check todo.md for more info
