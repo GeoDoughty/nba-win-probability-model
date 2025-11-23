@@ -5,9 +5,14 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "ipykernel>=6.29.5",
     "nba-api>=1.7",
+    "nbformat>=5.10.4",
     "pandas>=2.2.3",
+    "plotly-express>=0.4.1",
+    "polars-lts-cpu>=1.29.0",
     "pyarrow>=19.0.1",
+    "scikit-learn>=1.6.1",
 ]
 
 [tool.ruff]
