@@ -1,8 +1,7 @@
 ## Short Term
 
--[x] Figure out why model is predicting 0.58 for every game (is it) - This was due to too many features
-
-- [ ] Set up basic evals: % accuracy and win prob representation (did 70% of the 70% games win)
+- [x] Figure out why model is predicting 0.58 for every game (is it) - This was due to too many features
+- [x] Set up basic evals: % accuracy and win prob representation (did 70% of the 70% games win)
 - [ ] Clean up code so it's clear what's test and train
 - [ ] Get results on 2025 data
 

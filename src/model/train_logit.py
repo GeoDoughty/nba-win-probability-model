@@ -2,10 +2,26 @@
 
 Train a basic logistic regression model on the data."""
 
+from pathlib import Path
 import polars as pl
 from sklearn.linear_model import LogisticRegression
-from sklearn import metrics
 import numpy as np
+
+
+### ---- User Inputs ---- ###
+output_path = Path("data/processed/logit/")
+
+train_path = Path("data/processed/resampled_train_22.parquet")
+test_path = Path("data/processed/resampled_test_23.parquet")
+
+FEATURES = [
+    "gametime_elapsed",
+    "score_diff",
+    "HOME_ENTRY_W_PCT",
+    "AWAY_ENTRY_W_PCT",
+]
+Y_COL = "home_win"
+### --------------------- ###
 
 
 def prepare_data(df: pl.DataFrame) -> pl.DataFrame:
@@ -19,8 +35,16 @@ def prepare_data(df: pl.DataFrame) -> pl.DataFrame:
     ).drop_nulls()
 
 
-train_df = pl.read_parquet("data/processed/resampled_train_22.parquet")
-test_df = pl.read_parquet("data/processed/resampled_test_23.parquet")
+def split_train_test_cols(df: pl.DataFrame) -> tuple[pl.DataFrame, np.ndarray]:
+    """Split the dataframe into features and target variable."""
+    X = df.select(FEATURES)
+    y = df[Y_COL].to_numpy()
+
+    return X, y
+
+
+train_df = pl.read_parquet(train_path)
+test_df = pl.read_parquet(test_path)
 
 INDEX_COLUMNS = [
     "evt",
@@ -44,46 +68,36 @@ INDEX_COLUMNS = [
 clean_train_df = prepare_data(train_df)
 clean_test_df = prepare_data(test_df)
 
-test_cols = [
-    "home_win",
-    "gametime_elapsed",
-    "score_diff",
-    "HOME_ENTRY_W_PCT",
-    "AWAY_ENTRY_W_PCT",
-]
 
-reduced_train_df = clean_train_df.select(test_cols)
-X = reduced_train_df.drop("home_win")
-y = reduced_train_df["home_win"].to_numpy()
+train_X, train_y = split_train_test_cols(clean_train_df)
+test_X, test_y = split_train_test_cols(clean_test_df)
 
-model = LogisticRegression().fit(X=X, y=y)
+model = LogisticRegression().fit(X=train_X, y=train_y)
 
-model.classes_
 X_pred = model.predict_proba(X)[:, 1]
 np.unique(X_pred, return_counts=True)
 
 export_train_df = train_df.drop_nulls().with_columns(home_win_prob=X_pred)
 avg_accuracy = (
-    (export_train_df["home_win_prob"] > 0.5) == (export_train_df["home_win"] == 1)
+    (export_train_df["home_win_prob"] > 0.5) == (export_train_df[Y_COL] == 1)
 ).mean()
 
 print(f"Average accuracy on training set: {avg_accuracy:.2%}")
 
 # Run on test data
-reduced_test_df = clean_test_df.select(test_cols)
-X_test = reduced_test_df.drop("home_win")
-y = reduced_test_df["home_win"].to_numpy()
-clean_test_df = test_df.drop_nulls().with_columns(
-    home_win_prob=model.predict_proba(X_test)[:, 1]
+export_test_df = test_df.drop_nulls().with_columns(
+    home_win_prob=model.predict_proba(test_X)[:, 1]
 )
 
 test_avg_accuracy = (
-    (clean_test_df["home_win_prob"] > 0.5) == (clean_test_df["home_win"] == 1)
+    (clean_test_df["home_win_prob"] > 0.5) == (clean_test_df[Y_COL] == 1)
 ).mean()
 
 print(f"Average accuracy on test set: {test_avg_accuracy:.2%}")
 print("you did it chief")
 
-export_train_df.write_parquet("data/processed/logit/basic_train_22.parquet")
-clean_test_df.write_parquet("data/processed/logit/basic_test_23.parquet")
+output_path.mkdir(parents=True, exist_ok=True)
+
+export_train_df.write_parquet(output_path / train_path.name)
+export_test_df.write_parquet(output_path / test_path.name)
 # Check todo.md for more info
