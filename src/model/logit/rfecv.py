@@ -36,8 +36,8 @@ INDEX_COLUMNS = [
     "epid",
     "oftid",
     "ord",
-    "HOME_TEAM_ID",
-    "AWAY_TEAM_ID",
+    "HOME_Team_ID",
+    "AWAY_Team_ID",
     # "PERIOD",
 ]
 
@@ -83,7 +83,7 @@ train_X = train_X.select(
     ]
 )
 test_X, test_y = split_train_test_cols(clean_test_df)
-test_X = train_X.select(
+test_X = test_X.select(
     [
         "gametime_elapsed",
         "score_diff",
@@ -101,27 +101,40 @@ min_features_to_select = 1  # Minimum number of features to consider
 clf = LogisticRegression()
 cv = StratifiedKFold(5)
 
-rfecv = RFECV(
-    estimator=clf,
-    step=1,
-    cv=cv,
-    scoring="accuracy",
-    min_features_to_select=1,
-    n_jobs=2,
-    verbose=1,
+pipe = Pipeline(
+    [
+        ("scaler", MinMaxScaler()),
+        (
+            "rfecv",
+            RFECV(
+                estimator=clf,
+                step=1,
+                cv=cv,
+                scoring="accuracy",
+                min_features_to_select=1,
+                n_jobs=2,
+                verbose=1,
+            ),
+        ),
+    ]
 )
-rfecv.fit(train_X.to_numpy(), train_y)
-print(f"Optimal number of features: {rfecv.n_features_}")
+
+pipe.fit(train_X.to_numpy(), train_y)
+print(f"Optimal number of features: {pipe.named_steps['rfecv'].n_features_}")
 print(
-    f"Selected Features: {rfecv.get_feature_names_out(input_features=train_X.columns)}"
+    f"Selected Features: {pipe.named_steps['rfecv'].get_feature_names_out(input_features=train_X.columns)}"
 )
+print(f"Train Accuracy: {pipe.score(train_X.to_numpy(), train_y)}")
+print(f"Test Accuracy: {pipe.score(test_X.to_numpy(), test_y)}")
 
-train_X.select(rfecv.get_feature_names_out(input_features=train_X.columns))
-rfecv.predict_proba(train_X)[:, 1]
+X_pred = pipe.predict_proba(train_X)[:, 1]
+print(np.unique(X_pred, return_counts=True))
 
+## Next time
+# - figure out how to export the pipe
+# - run on whole dataset
+# - get metrics for the new model
 
-X_pred = rfecv.predict_proba(train_X)[:, 1]
-np.unique(X_pred, return_counts=True)
 
 export_train_df = train_df.drop_nulls().with_columns(home_win_prob=X_pred)
 avg_accuracy = (
