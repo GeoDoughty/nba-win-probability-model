@@ -10,9 +10,12 @@ import numpy as np
 from sklearn.model_selection import StratifiedKFold
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import MinMaxScaler
+from rich import print
+
+from src.eval.metrics import calculate_accuracy_metrics
 
 ### ---- User Inputs ---- ###
-output_path = Path("data/processed/logit/")
+output_path = Path("data/processed/rfecv/")
 
 train_path = Path("data/processed/resampled_train_22.parquet")
 test_path = Path("data/processed/resampled_test_23.parquet")
@@ -133,30 +136,27 @@ print(np.unique(X_pred, return_counts=True))
 ## Next time
 # - figure out how to export the pipe
 # - run on whole dataset
-# - get metrics for the new model
 
 
 export_train_df = train_df.drop_nulls().with_columns(home_win_prob=X_pred)
-avg_accuracy = (
-    (export_train_df["home_win_prob"] > 0.5) == (export_train_df[Y_COL] == 1)
-).mean()
+train_metrics = calculate_accuracy_metrics(export_train_df, "home_win_prob")
 
-print(f"Average accuracy on training set: {avg_accuracy:.2%}")
+print("Metrics on train data:")
+for metric, val in train_metrics.items():
+    print(f"{metric}: {val}")
 
 # Run on test data
 export_test_df = test_df.drop_nulls().with_columns(
-    home_win_prob=model.predict_proba(test_X)[:, 1]
+    home_win_prob=pipe.predict_proba(test_X)[:, 1]
 )
+test_metrics = calculate_accuracy_metrics(export_test_df, "home_win_prob")
 
-test_avg_accuracy = (
-    (clean_test_df["home_win_prob"] > 0.5) == (clean_test_df[Y_COL] == 1)
-).mean()
+print("Metrics on test data:")
+for metric, val in test_metrics.items():
+    print(f"{metric}: {val}")
 
-print(f"Average accuracy on test set: {test_avg_accuracy:.2%}")
-print("you did it chief")
 
 output_path.mkdir(parents=True, exist_ok=True)
 
 export_train_df.write_parquet(output_path / train_path.name)
 export_test_df.write_parquet(output_path / test_path.name)
-# Check todo.md for more info

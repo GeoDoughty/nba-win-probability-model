@@ -12,6 +12,7 @@ dependencies = [
     "plotly-express>=0.4.1",
     "polars-lts-cpu>=1.29.0",
     "pyarrow>=19.0.1",
+    "rich>=14.2.0",
     "scikit-learn>=1.6.1",
 ]
 

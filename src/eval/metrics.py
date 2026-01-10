@@ -20,7 +20,6 @@ def calculate_accuracy_metrics(df: pl.DataFrame, pred_col: str) -> dict[str, Any
     )
 
     return {
-        "mse": mean_squared_error(df["actual_home_win"], df[pred_col]),
         "accuracy": (df["predicted_home_win"] == df["actual_home_win"]).mean(),
         "brier_score": brier_score_loss(df["actual_home_win"], df[pred_col]),
         "log_loss": log_loss(df["actual_home_win"], df[pred_col]),
