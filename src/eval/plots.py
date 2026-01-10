@@ -1,3 +1,5 @@
+"""Plots to evaluate model performance"""
+
 """Basic script for some simple model evals. These include:
 1. Accuracy
 2. Predictive power (how confident is the model in itself)
@@ -6,32 +8,13 @@
 Could add something around over accurate predictions.
 Also what does a ROC curve show here?
 """
-
 import polars as pl
 import plotly.express as px
-from sklearn.metrics import mean_squared_error
+from eval.metrics import calculate_accuracy_metrics
 
 PRED_COL = "home_win_prob"
 
 pred_df = pl.read_parquet("./data/processed/logit/basic_train_22.parquet")
-
-
-def calculate_accuracy_metrics(df: pl.DataFrame, pred_col: str) -> pl.DataFrame:
-    """Calculate accuracy metrics for the predictions."""
-    df = df.with_columns(
-        [
-            (pl.col(pred_col) > 0.5).alias("predicted_home_win"),
-            (pl.col("home_win") == 1).alias("actual_home_win"),
-        ]
-    )
-
-    mse = mean_squared_error(df["actual_home_win"], df[pred_col])
-
-    return {
-        "mse": mse,
-        "accuracy": (df["predicted_home_win"] == df["actual_home_win"]).mean(),
-    }
-
 
 metrics = calculate_accuracy_metrics(pred_df, PRED_COL)
 
