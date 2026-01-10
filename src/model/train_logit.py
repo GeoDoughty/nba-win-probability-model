@@ -74,7 +74,7 @@ test_X, test_y = split_train_test_cols(clean_test_df)
 
 model = LogisticRegression().fit(X=train_X, y=train_y)
 
-X_pred = model.predict_proba(X)[:, 1]
+X_pred = model.predict_proba(train_X)[:, 1]
 np.unique(X_pred, return_counts=True)
 
 export_train_df = train_df.drop_nulls().with_columns(home_win_prob=X_pred)
