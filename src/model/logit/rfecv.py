@@ -89,9 +89,9 @@ clean_test_df = prepare_data(test_df)
 
 
 train_X, train_y = split_train_test_cols(clean_train_df)
-train_X = train_X.select(X_COLS)
+# train_X = train_X.select(X_COLS)
 test_X, test_y = split_train_test_cols(clean_test_df)
-test_X = test_X.select(X_COLS)
+# test_X = test_X.select(X_COLS)
 
 with mlflow.start_run() as run:
     # Define model features
