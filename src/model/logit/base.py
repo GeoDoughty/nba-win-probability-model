@@ -21,7 +21,7 @@ mlflow.sklearn.autolog()
 mlflow.set_experiment("RFECV")
 
 ### ---- User Inputs ---- ###
-output_path = Path("data/processed/rfecv/")
+output_path = Path("data/processed/logit/")
 
 train_path = Path("data/processed/resampled_train_22.parquet")
 test_path = Path("data/processed/resampled_test_23.parquet")
@@ -31,10 +31,6 @@ X_COLS = [
     "score_diff",
     "HOME_ENTRY_W_PCT",
     "AWAY_ENTRY_W_PCT",
-    "AWAY_FG3A_SEASON_AVG",
-    "HOME_FG3A_SEASON_AVG",
-    "AWAY_PF_LAST_5_AVG",
-    "HOME_PF_LAST_5_AVG",
 ]
 Y_COL = "home_win"
 ### --------------------- ###
@@ -94,52 +90,23 @@ test_X, test_y = split_train_test_cols(clean_test_df)
 test_X = test_X.select(X_COLS)
 
 with mlflow.start_run() as run:
-    # Define model features
-    min_features_to_select = 1  # Minimum number of features to consider
-    clf = LogisticRegression()
-    cv = StratifiedKFold(5)
+    model = LogisticRegression()
 
-    pipe = Pipeline(
-        [
-            ("scaler", MinMaxScaler()),
-            (
-                "rfecv",
-                RFECV(
-                    estimator=clf,
-                    step=1,
-                    cv=cv,
-                    scoring="accuracy",
-                    min_features_to_select=1,
-                    n_jobs=1,
-                    verbose=1,
-                ),
-            ),
-        ]
-    )
-
-    pipe.fit(train_X.to_numpy(), train_y)
-    print(f"Optimal number of features: {pipe.named_steps['rfecv'].n_features_}")
-    print(
-        f"Selected Features: {pipe.named_steps['rfecv'].get_feature_names_out(input_features=train_X.columns)}"
-    )
-    print(f"Train Accuracy: {pipe.score(train_X.to_numpy(), train_y)}")
-    print(f"Test Accuracy: {pipe.score(test_X.to_numpy(), test_y)}")
+    model.fit(train_X.to_numpy(), train_y)
+    print(f"Train Accuracy: {model.score(train_X.to_numpy(), train_y)}")
+    print(f"Test Accuracy: {model.score(test_X.to_numpy(), test_y)}")
 
     mlflow.log_params(
         {
-            "n_features": pipe.named_steps["rfecv"].n_features_,
+            "n_features": train_X.width,
         }
     )
     mlflow.log_dict(
-        list(
-            pipe.named_steps["rfecv"].get_feature_names_out(
-                input_features=train_X.columns
-            )
-        ),
+        X_COLS,
         "features.json",
     )
 
-    X_pred = pipe.predict_proba(train_X)[:, 1]
+    X_pred = model.predict_proba(train_X)[:, 1]
 
     export_train_df = train_df.drop_nulls().with_columns(home_win_prob=X_pred)
     train_metrics = calculate_accuracy_metrics(export_train_df, "home_win_prob")
@@ -150,7 +117,7 @@ with mlflow.start_run() as run:
 
     # Run on test data
     export_test_df = test_df.drop_nulls().with_columns(
-        home_win_prob=pipe.predict_proba(test_X)[:, 1]
+        home_win_prob=model.predict_proba(test_X)[:, 1]
     )
     test_metrics = calculate_accuracy_metrics(export_test_df, "home_win_prob")
 
