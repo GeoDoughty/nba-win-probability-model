@@ -1,0 +1,28 @@
+artifact_path: file:C:/Users/georg/Documents/GitHub/nba-win-probability-model/mlruns/1/models/m-bcea2ce3674649cfbdfa2cdec8bda621/artifacts
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.pkl
+    predict_fn: predict
+    python_version: 3.12.8
+  sklearn:
+    code: null
+    pickled_model: model.pkl
+    serialization_format: cloudpickle
+    sklearn_version: 1.6.1
+is_signature_from_type_hint: false
+mlflow_version: 3.8.1
+model_id: m-bcea2ce3674649cfbdfa2cdec8bda621
+model_size_bytes: 704
+model_uuid: m-bcea2ce3674649cfbdfa2cdec8bda621
+prompts: null
+run_id: ceab04f91d5a40b6b880e8e03973c32b
+signature:
+  inputs: '[{"type": "tensor", "tensor-spec": {"dtype": "float64", "shape": [-1, 4]}}]'
+  outputs: '[{"type": "tensor", "tensor-spec": {"dtype": "int32", "shape": [-1]}}]'
+  params: null
+type_hint_from_example: false
+utc_time_created: '2026-01-11 16:54:06.117626'

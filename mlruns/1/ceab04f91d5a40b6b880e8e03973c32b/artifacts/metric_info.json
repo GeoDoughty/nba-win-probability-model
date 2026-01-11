@@ -1,0 +1,4 @@
+{
+  "LogisticRegression_score-2_unknown_dataset-2": "LogisticRegression.score(X=<ndarray>, y=test_y)",
+  "LogisticRegression_score_unknown_dataset": "LogisticRegression.score(X=<ndarray>, y=train_y)"
+}
