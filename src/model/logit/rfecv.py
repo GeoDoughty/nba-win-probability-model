@@ -2,6 +2,7 @@
 
 Next time"""
 
+import mlflow
 from pathlib import Path
 import polars as pl
 from sklearn.linear_model import LogisticRegression
@@ -14,12 +15,26 @@ from rich import print
 
 from src.eval.metrics import calculate_accuracy_metrics
 
+mlflow.end_run()
+mlflow.sklearn.autolog()
+mlflow.set_experiment("RFECV")
+
 ### ---- User Inputs ---- ###
 output_path = Path("data/processed/rfecv/")
 
 train_path = Path("data/processed/resampled_train_22.parquet")
 test_path = Path("data/processed/resampled_test_23.parquet")
 
+X_COLS = [
+    "gametime_elapsed",
+    "score_diff",
+    "HOME_ENTRY_W_PCT",
+    "AWAY_ENTRY_W_PCT",
+    "AWAY_FG3A_SEASON_AVG",
+    "HOME_FG3A_SEASON_AVG",
+    "AWAY_PF_LAST_5_AVG",
+    "HOME_PF_LAST_5_AVG",
+]
 Y_COL = "home_win"
 ### --------------------- ###
 
@@ -73,88 +88,65 @@ clean_test_df = prepare_data(test_df)
 
 
 train_X, train_y = split_train_test_cols(clean_train_df)
-train_X = train_X.select(
-    [
-        "gametime_elapsed",
-        "score_diff",
-        "HOME_ENTRY_W_PCT",
-        "AWAY_ENTRY_W_PCT",
-        "AWAY_FG3A_SEASON_AVG",
-        "HOME_FG3A_SEASON_AVG",
-        "AWAY_PF_LAST_5_AVG",
-        "HOME_PF_LAST_5_AVG",
-    ]
-)
+train_X = train_X.select(X_COLS)
 test_X, test_y = split_train_test_cols(clean_test_df)
-test_X = test_X.select(
-    [
-        "gametime_elapsed",
-        "score_diff",
-        "HOME_ENTRY_W_PCT",
-        "AWAY_ENTRY_W_PCT",
-        "AWAY_FG3A_SEASON_AVG",
-        "HOME_FG3A_SEASON_AVG",
-        "AWAY_PF_LAST_5_AVG",
-        "HOME_PF_LAST_5_AVG",
-    ]
-)
+test_X = test_X.select(X_COLS)
 
-# Define model features
-min_features_to_select = 1  # Minimum number of features to consider
-clf = LogisticRegression()
-cv = StratifiedKFold(5)
+with mlflow.start_run() as run:
+    # Define model features
+    min_features_to_select = 1  # Minimum number of features to consider
+    clf = LogisticRegression()
+    cv = StratifiedKFold(5)
 
-pipe = Pipeline(
-    [
-        ("scaler", MinMaxScaler()),
-        (
-            "rfecv",
-            RFECV(
-                estimator=clf,
-                step=1,
-                cv=cv,
-                scoring="accuracy",
-                min_features_to_select=1,
-                n_jobs=2,
-                verbose=1,
+    pipe = Pipeline(
+        [
+            ("scaler", MinMaxScaler()),
+            (
+                "rfecv",
+                RFECV(
+                    estimator=clf,
+                    step=1,
+                    cv=cv,
+                    scoring="accuracy",
+                    min_features_to_select=1,
+                    n_jobs=2,
+                    verbose=1,
+                ),
             ),
-        ),
-    ]
-)
+        ]
+    )
 
-pipe.fit(train_X.to_numpy(), train_y)
-print(f"Optimal number of features: {pipe.named_steps['rfecv'].n_features_}")
-print(
-    f"Selected Features: {pipe.named_steps['rfecv'].get_feature_names_out(input_features=train_X.columns)}"
-)
-print(f"Train Accuracy: {pipe.score(train_X.to_numpy(), train_y)}")
-print(f"Test Accuracy: {pipe.score(test_X.to_numpy(), test_y)}")
+    pipe.fit(train_X.to_numpy(), train_y)
+    print(f"Optimal number of features: {pipe.named_steps['rfecv'].n_features_}")
+    print(
+        f"Selected Features: {pipe.named_steps['rfecv'].get_feature_names_out(input_features=train_X.columns)}"
+    )
+    print(f"Train Accuracy: {pipe.score(train_X.to_numpy(), train_y)}")
+    print(f"Test Accuracy: {pipe.score(test_X.to_numpy(), test_y)}")
 
-X_pred = pipe.predict_proba(train_X)[:, 1]
-print(np.unique(X_pred, return_counts=True))
+    X_pred = pipe.predict_proba(train_X)[:, 1]
 
-## Next time
-# - figure out how to export the pipe
-# - run on whole dataset
+    export_train_df = train_df.drop_nulls().with_columns(home_win_prob=X_pred)
+    train_metrics = calculate_accuracy_metrics(export_train_df, "home_win_prob")
 
+    print("Metrics on train data:")
+    for metric, val in train_metrics.items():
+        print(f"{metric}: {val}")
 
-export_train_df = train_df.drop_nulls().with_columns(home_win_prob=X_pred)
-train_metrics = calculate_accuracy_metrics(export_train_df, "home_win_prob")
+    # Run on test data
+    export_test_df = test_df.drop_nulls().with_columns(
+        home_win_prob=pipe.predict_proba(test_X)[:, 1]
+    )
+    test_metrics = calculate_accuracy_metrics(export_test_df, "home_win_prob")
 
-print("Metrics on train data:")
-for metric, val in train_metrics.items():
-    print(f"{metric}: {val}")
+    print("Metrics on test data:")
+    for metric, val in test_metrics.items():
+        print(f"{metric}: {val}")
 
-# Run on test data
-export_test_df = test_df.drop_nulls().with_columns(
-    home_win_prob=pipe.predict_proba(test_X)[:, 1]
-)
-test_metrics = calculate_accuracy_metrics(export_test_df, "home_win_prob")
-
-print("Metrics on test data:")
-for metric, val in test_metrics.items():
-    print(f"{metric}: {val}")
-
+    mlflow.log_metrics(
+        {"train_" + k: v for k, v in train_metrics.items()}
+        | {"test_" + k: v for k, v in test_metrics.items()}
+    )
 
 output_path.mkdir(parents=True, exist_ok=True)
 
