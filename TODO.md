@@ -9,6 +9,7 @@ Check this out for help: <https://www.digitalocean.com/community/tutorials/logis
 
 ## medium term
 
+- [ ] Add bonus/fouls as feature
 - [ ] use lasso on the features for logit
   - [ ] Normalise the data
   - [ ] Fix RFECV
@@ -16,6 +17,8 @@ Check this out for help: <https://www.digitalocean.com/community/tutorials/logis
 - [ ] XGBoost
 - [ ] Bayesian ;)
 - [ ] Analyse probability jumps
+- [ ] Optuna for hyperparam optimisation
+- [ ]
 
 ### Ideas
 
