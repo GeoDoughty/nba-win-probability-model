@@ -9,11 +9,18 @@ Check this out for help: <https://www.digitalocean.com/community/tutorials/logis
 
 ## medium term
 
+### Features
+
+- [ ] Add % instead of makes
+- [ ] Add deviation from season averages
 - [ ] Add bonus/fouls as feature
-- [ ] use lasso on the features for logit
-  - [ ] Normalise the data
-  - [ ] Fix RFECV
-  - [ ] try and asses accuracy and feature importance (SHAP?)
+
+### Models
+
+- [x] use lasso on the features for logit
+  - [x] Normalise the data
+  - [x] Fix RFECV
+  - [x] try and asses accuracy and feature importance (SHAP?)
 - [ ] XGBoost
 - [ ] Bayesian ;)
 - [ ] Analyse probability jumps

@@ -1,4 +1,4 @@
 {
   "jupyter.notebookFileRoot": "${workspaceFolder}",
-  "python.languageServer": "None"
+  // "python.languageServer": "None"
 }
