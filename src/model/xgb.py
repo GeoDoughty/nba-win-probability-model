@@ -9,11 +9,16 @@ import numpy as np
 from rich import print
 from xgboost import XGBClassifier
 
+from src.eval.plots.roc_curve import plot_roc_curve
+from src.eval.plots.pr_curve import plot_precision_recall_curve
+from src.eval.plots.confusion_matrix import plot_confusion_matrix
+
 from src.eval.metrics import calculate_accuracy_metrics
 
 mlflow.end_run()
 mlflow.xgboost.autolog()
 mlflow.set_experiment("XGBoost")
+
 
 ### ---- User Inputs ---- ###
 output_path = Path("data/processed/xgboost/")
@@ -97,9 +102,17 @@ with mlflow.start_run() as run:
     # fit model
     bst.fit(train_X, train_y)
 
-    X_pred = bst.predict_proba(train_X)[:, 1]
+    y_pred = bst.predict_proba(train_X)[:, 1]
 
-    export_train_df = train_df.drop_nulls().with_columns(home_win_prob=X_pred)
+    roc_curve_fig = plot_roc_curve(train_y, y_pred)
+    pr_curve_fig = plot_precision_recall_curve(train_y, y_pred)
+    conf_mat_fig = plot_confusion_matrix(train_y, y_pred)
+
+    mlflow.log_figure(roc_curve_fig, "train/roc_curve.png")
+    mlflow.log_figure(pr_curve_fig, "train/precision_recall_curve.png")
+    mlflow.log_figure(conf_mat_fig, "train/confusion_matrix.png")
+
+    export_train_df = train_df.drop_nulls().with_columns(home_win_prob=y_pred)
     train_metrics = calculate_accuracy_metrics(export_train_df, "home_win_prob")
 
     print("Metrics on train data:")
@@ -107,9 +120,8 @@ with mlflow.start_run() as run:
         print(f"{metric}: {val}")
 
     # Run on test data
-    export_test_df = test_df.drop_nulls().with_columns(
-        home_win_prob=bst.predict_proba(test_X)[:, 1]
-    )
+    y_pred = bst.predict_proba(test_X)[:, 1]
+    export_test_df = test_df.drop_nulls().with_columns(home_win_prob=y_pred)
     test_metrics = calculate_accuracy_metrics(export_test_df, "home_win_prob")
 
     print("Metrics on test data:")
@@ -120,6 +132,14 @@ with mlflow.start_run() as run:
         {"train_" + k: v for k, v in train_metrics.items()}
         | {"test_" + k: v for k, v in test_metrics.items()}
     )
+
+    roc_curve_fig = plot_roc_curve(test_y, y_pred)
+    pr_curve_fig = plot_precision_recall_curve(test_y, y_pred)
+    conf_mat_fig = plot_confusion_matrix(test_y, y_pred)
+
+    mlflow.log_figure(roc_curve_fig, "test/roc_curve.png")
+    mlflow.log_figure(pr_curve_fig, "test/precision_recall_curve.png")
+    mlflow.log_figure(conf_mat_fig, "test/confusion_matrix.png")
 
 output_path.mkdir(parents=True, exist_ok=True)
 
