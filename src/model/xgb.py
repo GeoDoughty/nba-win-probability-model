@@ -12,6 +12,7 @@ from xgboost import XGBClassifier
 from src.eval.plots.roc_curve import plot_roc_curve
 from src.eval.plots.pr_curve import plot_precision_recall_curve
 from src.eval.plots.confusion_matrix import plot_confusion_matrix
+from sklearn.model_selection import GridSearchCV
 
 from src.eval.metrics import calculate_accuracy_metrics
 
@@ -93,16 +94,31 @@ train_X, train_y = split_train_test_cols(clean_train_df)
 test_X, test_y = split_train_test_cols(clean_test_df)
 # test_X = test_X.select(X_COLS)
 
+# Use this next time: https://xgboost.readthedocs.io/en/stable/parameter.html
+# https://xgboost.readthedocs.io/en/stable/tutorials/param_tuning.html
+# https://mlflow.org/docs/latest/ml/traditional-ml/xgboost/#grid-search
+param_grid = {
+    "max_depth": [2, 3, 5],
+    "subsample": [0.6, 0.9],
+    "colsample_bytree": [0.6, 0.9],
+    "learning_rate": [0.1, 0.3],
+    "scale_pos_weight": [1, 0.72],
+}
+
 with mlflow.start_run() as run:
     # Define model features
     # create model instance
-    bst = XGBClassifier(
-        n_estimators=2, max_depth=2, learning_rate=1, objective="binary:logistic"
+    xgb = XGBClassifier(
+        n_estimators=100, objective="binary:logistic", random_state=42, n_jobs=-1
     )
-    # fit model
-    bst.fit(train_X, train_y)
+    grid_search = GridSearchCV(estimator=xgb, param_grid=param_grid, verbose=2)
+    grid_search.fit(train_X, train_y)
 
-    y_pred = bst.predict_proba(train_X)[:, 1]
+    # Print best parameters
+    print(f"Best parameters: {grid_search.best_params_}")
+    print(f"Best score: {grid_search.best_score_}")
+
+    y_pred = grid_search.predict_proba(train_X)[:, 1]
 
     roc_curve_fig = plot_roc_curve(train_y, y_pred)
     pr_curve_fig = plot_precision_recall_curve(train_y, y_pred)
@@ -120,7 +136,7 @@ with mlflow.start_run() as run:
         print(f"{metric}: {val}")
 
     # Run on test data
-    y_pred = bst.predict_proba(test_X)[:, 1]
+    y_pred = grid_search.predict_proba(test_X)[:, 1]
     export_test_df = test_df.drop_nulls().with_columns(home_win_prob=y_pred)
     test_metrics = calculate_accuracy_metrics(export_test_df, "home_win_prob")
 
