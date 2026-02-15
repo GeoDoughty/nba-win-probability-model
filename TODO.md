@@ -14,6 +14,7 @@ Check this out for help: <https://www.digitalocean.com/community/tutorials/logis
 - [ ] Add % instead of makes
 - [ ] Add deviation from season averages
 - [ ] Add bonus/fouls as feature
+- [ ] Add interaction between home and away team
 
 ### Models
 
@@ -22,6 +23,9 @@ Check this out for help: <https://www.digitalocean.com/community/tutorials/logis
   - [x] Fix RFECV
   - [x] try and asses accuracy and feature importance (SHAP?)
 - [ ] XGBoost
+  - [x] Basic model
+  - [ ] *GridSearch*
+  - [ ] Optuna
 - [ ] Bayesian ;)
 - [ ] Analyse probability jumps
 - [ ] Optuna for hyperparam optimisation
