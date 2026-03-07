@@ -14,6 +14,7 @@ Check this out for help: <https://www.digitalocean.com/community/tutorials/logis
 - [ ] Add % instead of makes
 - [ ] Add deviation from season averages
 - [ ] Add bonus/fouls as feature
+- [ ] Add interaction between home and away team
 
 ### Models
 

@@ -27,6 +27,10 @@ TEST_DATA_PATHS = [
 
 SEASON_REGEX = r"data/raw/pbp/parquet/datanba_(\d{4})\.tar\.parquet"
 
+# Plan:
+# - Pull data in from pbp, use this to get bonus in a game
+# - Looking at it will need to deduplicate the events to get fouls
+
 
 def calculate_game_time(data_df: pd.DataFrame) -> pd.Series:
     # need to edit this for period 5+
